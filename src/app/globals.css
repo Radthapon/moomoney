@@ -1,26 +1,73 @@
 @import "tailwindcss";
 
+@theme {
+  /* Brand — royal blue */
+  --color-brand-50: #eef3ff;
+  --color-brand-100: #dde8ff;
+  --color-brand-200: #c2d4ff;
+  --color-brand-300: #97b4ff;
+  --color-brand-400: #6088fb;
+  --color-brand-500: #3b6ef4;
+  --color-brand-600: #2f5ee6;
+  --color-brand-700: #2749c7;
+
+  /* Mint — progress / positive */
+  --color-mint-400: #34d8a6;
+  --color-mint-500: #16c79a;
+  --color-mint-600: #0fa982;
+
+  /* Surfaces */
+  --color-page: #f3f4f8;
+  --color-ink: #1b2230;
+  --color-ink-soft: #8a90a2;
+
+  --font-sans: var(--font-thai), ui-sans-serif, system-ui, sans-serif;
+
+  --radius-2xl: 1.25rem;
+  --radius-3xl: 1.75rem;
+}
+
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  --background: #f3f4f8;
+  --foreground: #1b2230;
 }
 
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
-}
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
-}
-
+html,
 body {
   background: var(--background);
   color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+}
+
+* {
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* Tabular figures for currency */
+.nums {
+  font-variant-numeric: tabular-nums;
+  font-feature-settings: "tnum";
+}
+
+/* Hide scrollbars on the mobile shell but keep scroll */
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+@keyframes sheet-up {
+  from {
+    opacity: 0;
+    transform: translateY(8%);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.animate-sheet {
+  animation: sheet-up 0.28s cubic-bezier(0.22, 1, 0.36, 1);
 }
