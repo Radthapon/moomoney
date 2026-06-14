@@ -1,4 +1,5 @@
 'use client';
+import { useState } from 'react';
 import dynamic from 'next/dynamic';
 import { useFinancialSummary } from '@/hooks/useFinancialSummary';
 import { useDebts } from '@/hooks/useDebts';
@@ -8,7 +9,9 @@ import { StatCard } from '@/components/common/StatCard';
 import { ProgressRing } from '@/components/common/ProgressRing';
 import { IncomeSummaryCard } from '@/components/dashboard/IncomeSummaryCard';
 import { DebtProgressList } from '@/components/dashboard/DebtProgressList';
+import { EditSalarySheet } from '@/components/dashboard/EditSalarySheet';
 import { formatBaht } from '@/lib/formatters';
+import { Pencil } from 'lucide-react';
 
 const ExpenseDonutChart = dynamic(
   () => import('@/components/dashboard/ExpenseDonutChart').then((m) => m.ExpenseDonutChart),
@@ -19,6 +22,7 @@ export default function DashboardPage() {
   const { summary, isLoading } = useFinancialSummary();
   const { debts } = useDebts();
   const { expenses } = useExpenses();
+  const [editSalary, setEditSalary] = useState(false);
 
   if (isLoading) {
     return <div className="p-6 flex items-center justify-center h-64 text-ink-soft">กำลังโหลด...</div>;
@@ -46,9 +50,16 @@ export default function DashboardPage() {
             <p className={`nums text-[32px] font-extrabold leading-tight mt-1 ${summary.netSalary >= 0 ? 'text-ink' : 'text-rose-500'}`}>
               ฿{formatBaht(summary.netSalary)}
             </p>
-            <p className="text-xs text-ink-soft mt-1">
-              จากเงินเดือน <span className="font-semibold text-ink">฿{formatBaht(summary.salary)}</span>
-            </p>
+            <button
+              onClick={() => setEditSalary(true)}
+              className="flex items-center gap-1.5 mt-1.5 text-xs text-ink-soft active:opacity-60 transition-opacity"
+            >
+              จากเงินเดือน
+              <span className="font-semibold text-ink nums">฿{formatBaht(summary.salary)}</span>
+              <span className="w-5 h-5 rounded-full bg-slate-100 flex items-center justify-center ml-0.5">
+                <Pencil size={10} className="text-ink-soft" />
+              </span>
+            </button>
           </div>
           <ProgressRing value={committedPct} size={108} stroke={11} from={ring.from} to={ring.to}>
             <span className={`nums text-xl font-extrabold ${over ? 'text-rose-500' : 'text-ink'}`}>{committedPct}%</span>
@@ -58,7 +69,9 @@ export default function DashboardPage() {
 
         {/* Stat grid */}
         <div className="grid grid-cols-2 gap-3">
-          <StatCard title="เงินเดือน" value={summary.salary} colorVariant="neutral" emoji="🪙" />
+          <button onClick={() => setEditSalary(true)} className="text-left active:scale-[0.97] transition-transform">
+            <StatCard title="เงินเดือน" value={summary.salary} colorVariant="neutral" emoji="✏️" subtitle="แตะเพื่อแก้ไข" />
+          </button>
           <StatCard title="ค่าใช้จ่ายรวม" value={summary.totalMonthlyExpenses} colorVariant="warning" emoji="🧾" />
           <StatCard title="ยอดผ่อนรวม" value={summary.totalDebtPayments} colorVariant="negative" emoji="💳" />
           <StatCard title="หลังปิดหนี้" value={summary.afterDebtClearMonthly} colorVariant="positive" emoji="🎯" subtitle="เหลือ/เดือน" />
@@ -68,6 +81,8 @@ export default function DashboardPage() {
         <ExpenseDonutChart expenses={expenses} />
         <DebtProgressList debts={debts} />
       </div>
+
+      <EditSalarySheet open={editSalary} onOpenChange={setEditSalary} />
     </div>
   );
 }

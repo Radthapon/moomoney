@@ -1,0 +1,150 @@
+'use client';
+import * as Dialog from '@radix-ui/react-dialog';
+import { useDailySpending, useRolloverDecision } from '@/hooks/useDailySpending';
+import { formatBaht } from '@/lib/formatters';
+import { X, Trash2, PiggyBank, ArrowRight } from 'lucide-react';
+import { cn } from '@/lib/utils';
+
+interface Props {
+  open: boolean;
+  onOpenChange: (v: boolean) => void;
+  date: string; // 'YYYY-MM-DD'
+  dailyBudget: number;
+}
+
+function parseDateLabel(date: string) {
+  const [y, m, d] = date.split('-').map(Number);
+  const thMonth = ['ม.ค.','ก.พ.','มี.ค.','เม.ย.','พ.ค.','มิ.ย.','ก.ค.','ส.ค.','ก.ย.','ต.ค.','พ.ย.','ธ.ค.'];
+  return `${d} ${thMonth[m - 1]} ${y + 543}`;
+}
+
+export function DayDetailSheet({ open, onOpenChange, date, dailyBudget }: Props) {
+  const { entries, total, deleteEntry } = useDailySpending(date);
+  const { mode, setDecision, clearDecision } = useRolloverDecision(date);
+  const todayStr = new Date().toLocaleDateString('sv-SE');
+  const isPast = date < todayStr; // strictly before today — cannot edit
+  const remaining = dailyBudget - total;
+  const pct = dailyBudget > 0 ? Math.min((total / dailyBudget) * 100, 100) : 0;
+  const over = total > dailyBudget;
+
+  return (
+    <Dialog.Root open={open} onOpenChange={onOpenChange}>
+      <Dialog.Portal>
+        <Dialog.Overlay className="fixed inset-0 bg-ink/40 backdrop-blur-[2px] z-50" />
+        <Dialog.Content className="fixed left-1/2 bottom-0 -translate-x-1/2 w-full max-w-[460px] bg-white rounded-t-[28px] z-50 max-h-[80vh] flex flex-col animate-sheet">
+          <div className="px-5 pt-3 shrink-0">
+            <div className="mx-auto w-10 h-1.5 rounded-full bg-slate-200 mb-3" />
+            <div className="flex justify-between items-center mb-4">
+              <Dialog.Title className="font-bold text-ink text-lg">{parseDateLabel(date)}</Dialog.Title>
+              <button onClick={() => onOpenChange(false)} className="w-8 h-8 rounded-full bg-slate-100 flex items-center justify-center text-ink-soft">
+                <X size={18} />
+              </button>
+            </div>
+
+            {/* Summary */}
+            <div className="grid grid-cols-3 gap-2 mb-4">
+              <div className="bg-slate-50 rounded-2xl p-3 text-center">
+                <p className="text-[10px] text-ink-soft">งบ/วัน</p>
+                <p className="nums font-bold text-ink text-sm">฿{formatBaht(dailyBudget)}</p>
+              </div>
+              <div className="bg-rose-500/8 rounded-2xl p-3 text-center">
+                <p className="text-[10px] text-ink-soft">ใช้ไป</p>
+                <p className="nums font-bold text-rose-500 text-sm">฿{formatBaht(total)}</p>
+              </div>
+              <div className={cn('rounded-2xl p-3 text-center', over ? 'bg-rose-500/8' : 'bg-mint-500/8')}>
+                <p className="text-[10px] text-ink-soft">{over ? 'เกิน' : 'เหลือ'}</p>
+                <p className={cn('nums font-bold text-sm', over ? 'text-rose-500' : 'text-mint-600')}>
+                  ฿{formatBaht(Math.abs(remaining))}
+                </p>
+              </div>
+            </div>
+            <div className="h-2 bg-slate-100 rounded-full overflow-hidden mb-4">
+              <div
+                className={cn('h-full rounded-full', over ? 'bg-rose-500' : 'bg-mint-500')}
+                style={{ width: `${pct}%` }}
+              />
+            </div>
+          </div>
+
+          <div className="overflow-y-auto px-5 pb-8">
+            {entries.length === 0 ? (
+              <p className="text-center text-ink-soft text-sm py-6">ไม่มีรายการ</p>
+            ) : (
+              <div className="flex flex-col gap-2">
+                {entries.map((e) => (
+                  <div key={e.id} className="flex items-center gap-3 bg-slate-50 rounded-2xl px-4 py-3">
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-medium text-ink truncate">{e.note || '—'}</p>
+                      <p className="text-[10px] text-ink-soft">
+                        {new Date(e.createdAt).toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit' })}
+                      </p>
+                    </div>
+                    <span className="nums font-bold text-ink shrink-0">฿{formatBaht(e.amount)}</span>
+                    <button
+                      onClick={() => e.id && deleteEntry(e.id)}
+                      className="p-1.5 rounded-lg bg-rose-500/10 text-rose-500 active:scale-90 transition-transform shrink-0"
+                    >
+                      <Trash2 size={13} />
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {/* Rollover toggle — visible for all, disabled for past dates */}
+            {remaining !== 0 && (
+              <div className="mt-4 pt-4 border-t border-slate-100">
+                {remaining < 0 ? (
+                  <div className="flex items-center gap-2 bg-rose-50 rounded-2xl px-3 py-2.5">
+                    <ArrowRight size={14} className="text-rose-500 shrink-0" />
+                    <p className="text-[12px] text-rose-600 font-medium">
+                      เกิน <span className="font-bold nums">฿{formatBaht(Math.abs(remaining))}</span> → หักจากงบวันถัดไปอัตโนมัติ
+                    </p>
+                  </div>
+                ) : (
+                  <>
+                    <p className="text-[11px] text-ink-soft mb-2">
+                      เหลือ <span className="nums font-bold text-ink">฿{formatBaht(remaining)}</span> — จะเอาไปไหน?
+                    </p>
+                    <div className="grid grid-cols-2 gap-2">
+                      <button
+                        type="button"
+                        disabled={isPast}
+                        onClick={() => !isPast && (mode === 'save' ? clearDecision() : setDecision('save'))}
+                        className={cn(
+                          'flex items-center justify-center gap-1.5 py-2.5 rounded-2xl text-xs font-bold transition-all',
+                          !isPast && 'active:scale-95',
+                          mode === 'save'
+                            ? 'bg-brand-500 text-white shadow-[0_4px_10px_-4px_rgba(59,110,244,0.5)]'
+                            : 'bg-slate-100 text-ink-soft',
+                          isPast && 'opacity-40 cursor-not-allowed',
+                        )}
+                      >
+                        <PiggyBank size={14} /> ออมเงิน
+                      </button>
+                      <button
+                        type="button"
+                        disabled={isPast}
+                        onClick={() => !isPast && (mode === 'rollover' ? clearDecision() : setDecision('rollover'))}
+                        className={cn(
+                          'flex items-center justify-center gap-1.5 py-2.5 rounded-2xl text-xs font-bold transition-all',
+                          !isPast && 'active:scale-95',
+                          mode === 'rollover'
+                            ? 'bg-mint-500 text-white shadow-[0_4px_10px_-4px_rgba(22,199,154,0.5)]'
+                            : 'bg-slate-100 text-ink-soft',
+                          isPast && 'opacity-40 cursor-not-allowed',
+                        )}
+                      >
+                        <ArrowRight size={14} /> ใช้วันถัดไป
+                      </button>
+                    </div>
+                  </>
+                )}
+              </div>
+            )}
+          </div>
+        </Dialog.Content>
+      </Dialog.Portal>
+    </Dialog.Root>
+  );
+}

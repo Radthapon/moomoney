@@ -24,9 +24,6 @@ export const monthlyExpenseSchema = z.object({
 export const dailyBudgetSchema = z.object({
   perMeal: z.number().min(0),
   dailyTransport: z.number().min(0),
-  holidayFood: z.number().min(0),
-  rangeMin: z.number().min(0),
-  rangeMax: z.number().min(0),
 });
 
 export const personalCareSchema = z.object({

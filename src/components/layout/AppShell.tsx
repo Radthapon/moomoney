@@ -7,6 +7,10 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   const [ready, setReady] = useState(false);
 
   useEffect(() => {
+    // Request persistent storage so browser never evicts IndexedDB data
+    if (navigator.storage?.persist) {
+      navigator.storage.persist();
+    }
     seedDefaultData().then(() => setReady(true));
   }, []);
 

@@ -50,10 +50,8 @@ export interface DailyBudget {
   id?: number;
   perMeal: number;
   dailyTransport: number;
-  holidayFood: number;
-  workdayTotal: number;
-  rangeMin: number;
-  rangeMax: number;
+  /** days of week that have transport cost: 0=Sun 1=Mon … 6=Sat */
+  transportDays: number[];
   updatedAt: Date;
 }
 
@@ -70,6 +68,26 @@ export interface PersonalCareItem {
   budget: number;
   sortOrder: number;
   createdAt: Date;
+}
+
+export interface DailySpendingEntry {
+  id?: number;
+  date: string; // 'YYYY-MM-DD' local date
+  amount: number;
+  note: string;
+  createdAt: Date;
+}
+
+/** Per-day decision for what to do with surplus budget */
+export interface DailyRolloverDecision {
+  date: string; // 'YYYY-MM-DD', primary key
+  mode: 'save' | 'rollover';
+}
+
+/** Extra budget injected from savings pool for a specific day */
+export interface DailySavingsWithdrawal {
+  date: string; // 'YYYY-MM-DD', primary key
+  amount: number;
 }
 
 export interface FinancialSummary {

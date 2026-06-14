@@ -1,5 +1,5 @@
 import Dexie, { type Table } from 'dexie';
-import type { Income, Debt, MonthlyExpense, DailyBudget, PersonalCareItem, DebtPayment } from '@/types';
+import type { Income, Debt, MonthlyExpense, DailyBudget, PersonalCareItem, DebtPayment, DailySpendingEntry, DailyRolloverDecision, DailySavingsWithdrawal } from '@/types';
 
 export class FinanceDB extends Dexie {
   income!: Table<Income>;
@@ -8,6 +8,9 @@ export class FinanceDB extends Dexie {
   dailyBudget!: Table<DailyBudget>;
   personalCareItems!: Table<PersonalCareItem>;
   debtPayments!: Table<DebtPayment>;
+  dailySpendingEntries!: Table<DailySpendingEntry>;
+  dailyRollovers!: Table<DailyRolloverDecision>;
+  dailySavingsWithdrawals!: Table<DailySavingsWithdrawal>;
 
   constructor() {
     super('ThaiFinanceDB');
@@ -26,7 +29,6 @@ export class FinanceDB extends Dexie {
       personalCareItems: '++id, category, sortOrder',
       debtPayments: '++id, debtId, [debtId+monthNumber]',
     }).upgrade(tx => {
-      // backfill totalMonths for existing debts
       return tx.table('debts').toCollection().modify((debt: Debt) => {
         if (!debt.totalMonths) {
           debt.totalMonths = debt.monthlyPayment > 0
@@ -35,14 +37,45 @@ export class FinanceDB extends Dexie {
         }
       });
     });
+    this.version(3).stores({
+      income: '++id',
+      debts: '++id, status, sortOrder',
+      monthlyExpenses: '++id, category, sortOrder',
+      dailyBudget: '++id',
+      personalCareItems: '++id, category, sortOrder',
+      debtPayments: '++id, debtId, [debtId+monthNumber]',
+      dailySpendingEntries: '++id, date',
+    });
+    this.version(4).stores({
+      income: '++id',
+      debts: '++id, status, sortOrder',
+      monthlyExpenses: '++id, category, sortOrder',
+      dailyBudget: '++id',
+      personalCareItems: '++id, category, sortOrder',
+      debtPayments: '++id, debtId, [debtId+monthNumber]',
+      dailySpendingEntries: '++id, date',
+      dailyRollovers: 'date',
+    });
+    this.version(5).stores({
+      income: '++id',
+      debts: '++id, status, sortOrder',
+      monthlyExpenses: '++id, category, sortOrder',
+      dailyBudget: '++id',
+      personalCareItems: '++id, category, sortOrder',
+      debtPayments: '++id, debtId, [debtId+monthNumber]',
+      dailySpendingEntries: '++id, date',
+      dailyRollovers: 'date',
+      dailySavingsWithdrawals: 'date', // date as primary key — upsert via put()
+    });
   }
 }
 
 export const db = new FinanceDB();
 
 export async function seedDefaultData() {
-  const count = await db.debts.count();
-  if (count > 0) return;
+  if (localStorage.getItem('moo_seeded') === '1') return;
+
+  localStorage.setItem('moo_seeded', '1');
 
   await db.income.put({ id: 1, salary: 25700, updatedAt: new Date() });
 
@@ -73,10 +106,7 @@ export async function seedDefaultData() {
     id: 1,
     perMeal: 75,
     dailyTransport: 75,
-    holidayFood: 225,
-    workdayTotal: 300,
-    rangeMin: 60,
-    rangeMax: 80,
+    transportDays: [1, 2, 3, 4, 5], // Mon–Fri
     updatedAt: new Date(),
   });
 

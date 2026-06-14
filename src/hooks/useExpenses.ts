@@ -19,5 +19,13 @@ export function useExpenses() {
     return db.monthlyExpenses.delete(id);
   };
 
-  return { expenses: expenses ?? [], addExpense, updateExpense, deleteExpense };
+  const reorderExpenses = async (orderedIds: number[]) => {
+    await db.transaction('rw', db.monthlyExpenses, async () => {
+      await Promise.all(
+        orderedIds.map((id, index) => db.monthlyExpenses.update(id, { sortOrder: index })),
+      );
+    });
+  };
+
+  return { expenses: expenses ?? [], addExpense, updateExpense, deleteExpense, reorderExpenses };
 }
