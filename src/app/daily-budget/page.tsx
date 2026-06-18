@@ -275,7 +275,7 @@ export default function DailyBudgetPage() {
     setAdding(false);
   };
 
-  const { totalSaved, thisMonthSaved, savedDays, totalWithdrawn, availableSavings } = useAllTimeSavings(dailyBudget);
+  const { totalSaved, savedDays, withdrawalDays, totalWithdrawn, availableSavings } = useAllTimeSavings(dailyBudget);
 
   const [detailDate, setDetailDate] = useState<string | null>(null);
   const [showSettings, setShowSettings] = useState(false);
@@ -508,30 +508,52 @@ export default function DailyBudgetPage() {
             </div>
             <div>
               <p className="font-bold text-ink">เงินออมสะสม</p>
-              <p className="text-[11px] text-ink-soft">ยอดที่เลือกออมทั้งหมด</p>
+              <p className="text-[11px] text-ink-soft">ยอดที่ใช้ได้</p>
             </div>
           </div>
 
           <p className="nums text-[36px] font-extrabold text-mint-600 leading-none">
-            ฿{formatBaht(totalSaved)}
+            ฿{formatBaht(availableSavings)}
           </p>
-          <p className="text-xs text-ink-soft nums mt-1 mb-4">
-            เดือนนี้ <span className="font-semibold text-mint-600">฿{formatBaht(thisMonthSaved)}</span>
-          </p>
+          <div className="flex gap-3 text-xs text-ink-soft nums mt-1 mb-4">
+            <span>ออมทั้งหมด <span className="font-semibold text-ink">฿{formatBaht(totalSaved)}</span></span>
+            {totalWithdrawn > 0 && (
+              <span>ดึงออกแล้ว <span className="font-semibold text-rose-500">-฿{formatBaht(totalWithdrawn)}</span></span>
+            )}
+          </div>
 
-          {savedDays.length > 0 ? (
+          {(savedDays.length > 0 || withdrawalDays.length > 0) ? (
             <div className="flex flex-col gap-2 pt-3 border-t border-slate-100">
-              <p className="text-[11px] font-semibold text-ink-soft">ประวัติการออม</p>
-              {savedDays.slice(0, 5).map(({ date, amount }) => {
-                const [y, mo, d] = date.split('-').map(Number);
-                const thMonth = ['ม.ค.','ก.พ.','มี.ค.','เม.ย.','พ.ค.','มิ.ย.','ก.ค.','ส.ค.','ก.ย.','ต.ค.','พ.ย.','ธ.ค.'];
-                return (
-                  <div key={date} className="flex justify-between items-center py-1">
-                    <span className="text-sm text-ink">{d} {thMonth[mo - 1]} {y + 543}</span>
-                    <span className="nums font-bold text-mint-600">+฿{formatBaht(amount)}</span>
-                  </div>
-                );
-              })}
+              {savedDays.length > 0 && (
+                <>
+                  <p className="text-[11px] font-semibold text-ink-soft">ประวัติการออม</p>
+                  {savedDays.slice(0, 5).map(({ date, amount }) => {
+                    const [y, mo, d] = date.split('-').map(Number);
+                    const thMonth = ['ม.ค.','ก.พ.','มี.ค.','เม.ย.','พ.ค.','มิ.ย.','ก.ค.','ส.ค.','ก.ย.','ต.ค.','พ.ย.','ธ.ค.'];
+                    return (
+                      <div key={date} className="flex justify-between items-center py-1">
+                        <span className="text-sm text-ink">{d} {thMonth[mo - 1]} {y + 543}</span>
+                        <span className="nums font-bold text-mint-600">+฿{formatBaht(amount)}</span>
+                      </div>
+                    );
+                  })}
+                </>
+              )}
+              {withdrawalDays.length > 0 && (
+                <>
+                  <p className="text-[11px] font-semibold text-ink-soft mt-2">ประวัติการดึงออก</p>
+                  {withdrawalDays.slice(0, 5).map(({ date, amount }) => {
+                    const [y, mo, d] = date.split('-').map(Number);
+                    const thMonth = ['ม.ค.','ก.พ.','มี.ค.','เม.ย.','พ.ค.','มิ.ย.','ก.ค.','ส.ค.','ก.ย.','ต.ค.','พ.ย.','ธ.ค.'];
+                    return (
+                      <div key={date} className="flex justify-between items-center py-1">
+                        <span className="text-sm text-ink">{d} {thMonth[mo - 1]} {y + 543}</span>
+                        <span className="nums font-bold text-rose-500">-฿{formatBaht(amount)}</span>
+                      </div>
+                    );
+                  })}
+                </>
+              )}
             </div>
           ) : (
             <div className="flex flex-col items-center gap-1 py-3 border-t border-slate-100">
@@ -550,6 +572,14 @@ export default function DailyBudgetPage() {
           dailyBudget={calMonthEffective[detailDate] ?? getBaseBudgetForDate(detailDate, dailyBudget)}
         />
       )}
+
+      <AddFromSavingsSheet
+        open={showAddSavings}
+        onOpenChange={setShowAddSavings}
+        availableSavings={availableSavings}
+        currentAmount={savingsBonusToday}
+        onConfirm={async (amount) => { await setSavingsWithdrawal(amount); }}
+      />
     </div>
   );
 }

@@ -159,6 +159,7 @@ export function useAllTimeSavings(settings: DailyBudget | undefined) {
       totalSaved: 0,
       thisMonthSaved: 0,
       savedDays: [] as { date: string; amount: number }[],
+      withdrawalDays: [] as { date: string; amount: number }[],
       totalWithdrawn: 0,
       availableSavings: 0,
     };
@@ -224,9 +225,14 @@ export function useAllTimeSavings(settings: DailyBudget | undefined) {
 
     savedDays.sort((a, b) => b.date.localeCompare(a.date));
 
+    const withdrawalDays = allWithdrawals
+      .filter((w) => w.amount > 0)
+      .map((w) => ({ date: w.date, amount: w.amount }))
+      .sort((a, b) => b.date.localeCompare(a.date));
+
     const totalWithdrawn = allWithdrawals.reduce((s, w) => s + w.amount, 0);
     const availableSavings = Math.max(0, totalSaved - totalWithdrawn);
 
-    return { totalSaved, thisMonthSaved, savedDays, totalWithdrawn, availableSavings };
+    return { totalSaved, thisMonthSaved, savedDays, withdrawalDays, totalWithdrawn, availableSavings };
   }, [allRollovers, allSpending, allWithdrawals, settings]);
 }

@@ -1,8 +1,9 @@
 'use client';
 import * as Dialog from '@radix-ui/react-dialog';
+import { useRef, useState } from 'react';
 import { useDailySpending, useRolloverDecision } from '@/hooks/useDailySpending';
 import { formatBaht } from '@/lib/formatters';
-import { X, Trash2, PiggyBank, ArrowRight } from 'lucide-react';
+import { X, Trash2, PiggyBank, ArrowRight, Plus } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 interface Props {
@@ -19,13 +20,29 @@ function parseDateLabel(date: string) {
 }
 
 export function DayDetailSheet({ open, onOpenChange, date, dailyBudget }: Props) {
-  const { entries, total, deleteEntry } = useDailySpending(date);
+  const { entries, total, addEntry, deleteEntry } = useDailySpending(date);
   const { mode, setDecision, clearDecision } = useRolloverDecision(date);
   const todayStr = new Date().toLocaleDateString('sv-SE');
-  const isPast = date < todayStr; // strictly before today — cannot edit
+  const isPast = date < todayStr;
   const remaining = dailyBudget - total;
   const pct = dailyBudget > 0 ? Math.min((total / dailyBudget) * 100, 100) : 0;
   const over = total > dailyBudget;
+
+  const amtRef = useRef<HTMLInputElement>(null);
+  const noteRef = useRef<HTMLInputElement>(null);
+  const [adding, setAdding] = useState(false);
+
+  const handleAdd = async () => {
+    const amt = parseFloat(amtRef.current?.value ?? '');
+    const note = noteRef.current?.value.trim() ?? '';
+    if (isNaN(amt) || amt <= 0) return;
+    setAdding(true);
+    await addEntry(amt, note);
+    if (amtRef.current) amtRef.current.value = '';
+    if (noteRef.current) noteRef.current.value = '';
+    amtRef.current?.focus();
+    setAdding(false);
+  };
 
   return (
     <Dialog.Root open={open} onOpenChange={onOpenChange}>
@@ -67,6 +84,38 @@ export function DayDetailSheet({ open, onOpenChange, date, dailyBudget }: Props)
           </div>
 
           <div className="overflow-y-auto px-5 pb-8">
+            {/* Retroactive expense form — past days only */}
+            {isPast && (
+              <div className="mb-4 pb-4 border-b border-slate-100">
+                <p className="text-[12px] font-semibold text-ink-soft mb-2">บันทึกรายจ่ายย้อนหลัง</p>
+                <div className="flex gap-2">
+                  <div className="relative w-28 shrink-0">
+                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-ink-soft text-sm select-none">฿</span>
+                    <input
+                      ref={amtRef}
+                      type="number" min="0" step="1"
+                      onKeyDown={(e) => e.key === 'Enter' && handleAdd()}
+                      placeholder="0"
+                      className="w-full bg-slate-100 rounded-2xl pl-7 pr-3 py-2.5 text-sm font-bold text-ink nums focus:outline-none focus:ring-2 focus:ring-brand-300"
+                    />
+                  </div>
+                  <input
+                    ref={noteRef}
+                    type="text"
+                    onKeyDown={(e) => e.key === 'Enter' && handleAdd()}
+                    placeholder="รายการ เช่น กาแฟ, ข้าว..."
+                    className="flex-1 bg-slate-100 rounded-2xl px-4 py-2.5 text-sm text-ink focus:outline-none focus:ring-2 focus:ring-brand-300"
+                  />
+                  <button
+                    onClick={handleAdd} disabled={adding}
+                    className="w-11 h-11 rounded-2xl bg-brand-500 text-white flex items-center justify-center shadow-[0_6px_14px_-6px_rgba(59,110,244,0.6)] active:scale-95 transition-transform shrink-0 disabled:opacity-50"
+                  >
+                    <Plus size={20} />
+                  </button>
+                </div>
+              </div>
+            )}
+
             {entries.length === 0 ? (
               <p className="text-center text-ink-soft text-sm py-6">ไม่มีรายการ</p>
             ) : (
@@ -91,7 +140,7 @@ export function DayDetailSheet({ open, onOpenChange, date, dailyBudget }: Props)
               </div>
             )}
 
-            {/* Rollover toggle — visible for all, disabled for past dates */}
+            {/* Rollover / save decision */}
             {remaining !== 0 && (
               <div className="mt-4 pt-4 border-t border-slate-100">
                 {remaining < 0 ? (
@@ -106,37 +155,33 @@ export function DayDetailSheet({ open, onOpenChange, date, dailyBudget }: Props)
                     <p className="text-[11px] text-ink-soft mb-2">
                       เหลือ <span className="nums font-bold text-ink">฿{formatBaht(remaining)}</span> — จะเอาไปไหน?
                     </p>
-                    <div className="grid grid-cols-2 gap-2">
+                    <div className={cn('grid gap-2', isPast ? 'grid-cols-1' : 'grid-cols-2')}>
                       <button
                         type="button"
-                        disabled={isPast}
-                        onClick={() => !isPast && (mode === 'save' ? clearDecision() : setDecision('save'))}
+                        onClick={() => mode === 'save' ? clearDecision() : setDecision('save')}
                         className={cn(
-                          'flex items-center justify-center gap-1.5 py-2.5 rounded-2xl text-xs font-bold transition-all',
-                          !isPast && 'active:scale-95',
+                          'flex items-center justify-center gap-1.5 py-2.5 rounded-2xl text-xs font-bold transition-all active:scale-95',
                           mode === 'save'
                             ? 'bg-brand-500 text-white shadow-[0_4px_10px_-4px_rgba(59,110,244,0.5)]'
                             : 'bg-slate-100 text-ink-soft',
-                          isPast && 'opacity-40 cursor-not-allowed',
                         )}
                       >
                         <PiggyBank size={14} /> ออมเงิน
                       </button>
-                      <button
-                        type="button"
-                        disabled={isPast}
-                        onClick={() => !isPast && (mode === 'rollover' ? clearDecision() : setDecision('rollover'))}
-                        className={cn(
-                          'flex items-center justify-center gap-1.5 py-2.5 rounded-2xl text-xs font-bold transition-all',
-                          !isPast && 'active:scale-95',
-                          mode === 'rollover'
-                            ? 'bg-mint-500 text-white shadow-[0_4px_10px_-4px_rgba(22,199,154,0.5)]'
-                            : 'bg-slate-100 text-ink-soft',
-                          isPast && 'opacity-40 cursor-not-allowed',
-                        )}
-                      >
-                        <ArrowRight size={14} /> ใช้วันถัดไป
-                      </button>
+                      {!isPast && (
+                        <button
+                          type="button"
+                          onClick={() => mode === 'rollover' ? clearDecision() : setDecision('rollover')}
+                          className={cn(
+                            'flex items-center justify-center gap-1.5 py-2.5 rounded-2xl text-xs font-bold transition-all active:scale-95',
+                            mode === 'rollover'
+                              ? 'bg-mint-500 text-white shadow-[0_4px_10px_-4px_rgba(22,199,154,0.5)]'
+                              : 'bg-slate-100 text-ink-soft',
+                          )}
+                        >
+                          <ArrowRight size={14} /> ใช้วันถัดไป
+                        </button>
+                      )}
                     </div>
                   </>
                 )}
